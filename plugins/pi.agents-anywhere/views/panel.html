@@ -193,6 +193,16 @@
   </div>
 
   <div class="card">
+    <div class="field">
+      <label>目录访问授权（手机端选择项目目录所需）</label>
+      <div id="rootHint" class="tip" style="margin-top:6px;">
+        尚未授权。授权后手机端即可浏览该目录下的项目，例如选择主目录 ~ 。
+      </div>
+    </div>
+    <button id="pickRootBtn" class="action-btn" type="button">📁 选择项目根目录</button>
+  </div>
+
+  <div class="card">
     <span style="font-weight: 600; font-size: 12px;">实时运行日志</span>
     <div id="logContainer" class="log-box" style="margin-top: 8px;">[等待连接...]</div>
   </div>
@@ -272,8 +282,7 @@
       document.getElementById('connectorToken').value = parsed.connectorToken;
       document.getElementById('deviceName').value = parsed.deviceName;
 
-      // 保存并连接
-      await window.pi?.bus?.send('anywhere:save_config', parsed);
+      await submitConfig(parsed);
       setTimeout(updateStatus, 800);
     });
 
@@ -284,13 +293,58 @@
         connectorToken: document.getElementById('connectorToken').value.trim(),
         deviceName: document.getElementById('deviceName').value.trim(),
       };
-      await window.pi?.bus?.send('anywhere:save_config', config);
+      await submitConfig(config);
       setTimeout(updateStatus, 800);
     });
 
+    document.getElementById('pickRootBtn').addEventListener('click', async () => {
+      const hint = document.getElementById('rootHint');
+      hint.innerText = '正在打开目录选择器…';
+      try {
+        const res = window.pluginBridge?.invoke
+          ? await window.pluginBridge.invoke('anywhere:pick_root', {})
+          : null;
+        if (!res) {
+          hint.innerText = '未能与插件进程通信：宿主未提供 pluginBridge。';
+        } else if (res.cancelled) {
+          hint.innerText = '已取消选择。';
+        } else if (res.ok) {
+          hint.innerText = `已授权：${res.path}（应用重启后需重新选择）`;
+        } else {
+          hint.innerText = '授权失败：' + (res.message || '未知错误');
+        }
+      } catch (err) {
+        hint.innerText = '授权失败：' + ((err && err.message) || err);
+      }
+      setTimeout(updateStatus, 500);
+    });
+    // 与插件进程通信。宿主 webview preload 只暴露 window.pluginBridge.invoke
+    // （旧代码使用的 window.pi.bus 在宿主中并不存在，导致点击后毫无反应）；
+    // 这里两者都尝试，以兼容可能的未来宿主版本。
+    async function submitConfig(config) {
+      try {
+        if (window.pluginBridge?.invoke) {
+          const res = await window.pluginBridge.invoke('anywhere:save_config', config);
+          if (res && res.ok === false) {
+            alert('保存失败：' + (res.message || res.code || '未知错误'));
+          }
+          return;
+        }
+        if (window.pi?.bus?.send) {
+          await window.pi.bus.send('anywhere:save_config', config);
+          return;
+        }
+        alert('未能与插件进程通信：宿主未提供 pluginBridge，请重启 Pi-Desktop 后重试。');
+      } catch (err) {
+        alert('连接失败：' + ((err && err.message) || err));
+      }
+    }
+
     async function updateStatus() {
       try {
-        const res = await window.pi?.bus?.send('anywhere:get_status');
+        const res = await (window.pluginBridge?.invoke
+          ? window.pluginBridge.invoke('anywhere:get_status', {})
+          : window.pi?.bus?.send('anywhere:get_status'));
         if (!res) return;
         const connected = Boolean(res.connected);
         document.getElementById('statusText').innerText = connected ? '在线 (已连接)' : '离线';
@@ -304,6 +358,10 @@
           document.getElementById('deviceName').value = res.deviceName;
         }
 
+        const rootHint = document.getElementById('rootHint');
+        if (res.rootPath) {
+          rootHint.innerText = `已授权：${res.rootPath}（应用重启后需重新选择）`;
+        }
         if (Array.isArray(res.logs) && res.logs.length > 0) {
           document.getElementById('logContainer').innerText = res.logs.join('\n');
         }

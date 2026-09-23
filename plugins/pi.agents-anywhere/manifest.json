@@ -1,9 +1,26 @@
 {
-  "schemaVersion": 1,
-  "id": "pi.agents-anywhere",
-  "name": "Agents Anywhere 远程助手",
-  "version": "1.0.3",
+  "activationEvents": [
+    "onStartup"
+  ],
+  "author": "Anywhere-Labs & PI-Desktop",
+  "contributes": {
+    "views": [
+      {
+        "entry": "views/panel.html",
+        "icon": "link",
+        "id": "anywhere-panel",
+        "order": 20,
+        "title": {
+          "en": "Agents Anywhere",
+          "zh-CN": "远程助手"
+        }
+      }
+    ]
+  },
   "description": "基于 Agents Anywhere 平台实现手机端对 Pi Desktop 的远程查看、发问与控制，支持命令行一键导入直连。",
+  "engines": {
+    "piDesktop": ">=0.2.0"
+  },
   "i18n": {
     "en": {
       "name": "Agents Anywhere Remote",
@@ -16,38 +33,32 @@
       "safetyNotes": "连接凭据仅保存在本机；网络通信严格限制在官方或用户配置的 Agents Anywhere 中继服务器（通过加密 WSS/HTTPS 传输）；远程执行的指令完全复用本地会话权限体系，绝不绕过安全沙箱。"
     }
   },
-  "safetyNotes": "连接凭据仅保存在本机；网络通信严格限制在官方或用户配置的 Agents Anywhere 中继服务器；远程执行指令完全遵循本地权限审批策略。",
-  "author": "Anywhere-Labs & PI-Desktop",
+  "id": "pi.agents-anywhere",
   "license": "MIT",
   "main": "main.js",
-  "contributes": {
-    "views": [
-      {
-        "id": "anywhere-panel",
-        "title": {
-          "en": "Agents Anywhere",
-          "zh-CN": "远程助手"
-        },
-        "icon": "link",
-        "entry": "views/panel.html",
-        "order": 20
-      }
-    ]
-  },
-  "permissions": [
-    "ui.view",
-    "net.fetch",
-    "net.websocket",
-    "desktop.control"
-  ],
+  "name": "Agents Anywhere 远程助手",
   "net": {
     "domains": [
       "api.agents-anywhere.com",
       "web.agents-anywhere.com"
     ]
   },
-  "engines": {
-    "piDesktop": ">=0.9.0"
-  },
-  "activationEvents": ["onStartup"]
+  "permissions": [
+    "desktop.control",
+    "fs.read",
+    "net.fetch",
+    "net.websocket",
+    "ui.view"
+  ],
+  "safetyNotes": "连接凭据仅保存在本机；网络通信严格限制在官方或用户配置的 Agents Anywhere 中继服务器；远程执行指令完全遵循本地权限审批策略。",
+  "schemaVersion": 1,
+  "version": "1.0.4",
+  "fs": {
+    "read": {
+      "root": "userSelected",
+      "scope": [
+        "**"
+      ]
+    }
+  }
 }
